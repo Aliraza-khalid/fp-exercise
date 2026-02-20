@@ -72,10 +72,11 @@ export const applyFloorAndCeiling = (floor: number, ceiling: number) => {
 
 // VALIDATORS
 
-export function validateCurrency(criteria: Criteria, market: MarketSnapshot) {
-  return criteria.currency === market.event.currency
-    ? Result.Ok(true)
-    : Result.Err("Currency mismatch");
+export function validateCurrency(currency: string) {
+  return (market: MarketSnapshot) =>
+    currency === market.event.currency
+      ? Result.Ok(true)
+      : Result.Err("Currency mismatch");
 }
 
 export const isDataEmpty = (message: string) => {

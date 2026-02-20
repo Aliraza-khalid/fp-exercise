@@ -1,7 +1,16 @@
-import { compose, filter, isEmpty, map, mean, prop, values } from "ramda";
+import {
+  compose,
+  curry,
+  filter,
+  isEmpty,
+  map,
+  mean,
+  prop,
+  values,
+} from "ramda";
 import { sampleCriteria } from "../data/Criteria.js";
 import { sampleSnapshot } from "../data/Snapshot.js";
-import type { PricingRule } from "./types/criteria.js";
+import type { Criteria, PricingRule } from "./types/criteria.js";
 import {
   filterByAge,
   filterByKey,
@@ -15,7 +24,7 @@ import {
   filterInvalidPrices,
 } from "./helpers.js";
 import { Result } from "@carbonteq/fp";
-import type { Listing } from "./types/market.js";
+import type { Listing, MarketSnapshot } from "./types/market.js";
 
 // Sudo Code
 
@@ -27,36 +36,40 @@ import type { Listing } from "./types/market.js";
 // [DONE] ignore non-finite prices
 // [DONE] result cannot be below zero or floor or above ceiling
 
-const listings = prop("listings", sampleSnapshot);
-const rules = prop("rules", sampleCriteria);
+const applyRules = curry((criteria: Criteria) => {
+  const currency = prop("currency", criteria);
+  const rules = prop("rules", criteria);
 
-validateCurrency(sampleCriteria, sampleSnapshot);
+  const applyRule = curry((currency: string, rule: PricingRule) => {
+    const ruleScope = getRuleKeyValues(rule);
+    if (!ruleScope) return () => Result.Err(["Invalid Rule"]);
+    const maxAge = prop("maxAgeDays", rule) ?? Infinity;
+    const minSample = prop("minSample", rule) ?? 0;
+    const increment = prop("increment", rule);
+    const floor = prop("floor", rule) ?? 0;
+    const ceiling = prop("ceiling", rule) ?? Infinity;
+    return (data: MarketSnapshot) =>
+      Result.Ok(data)
+        .validate([validateCurrency(currency)])
+        .map(prop("listings"))
+        .map(filter(filterByKey(ruleScope)))
+        .map(filter(filterByAge(maxAge)))
+        .validate([
+          validateBySampleSize(minSample),
+          isDataEmpty("No Listings passed maxAgeDays"),
+        ])
+        .innerMap(toPrices)
+        .map(filterInvalidPrices)
+        .map(mean)
+        .map(targetPrice(increment))
+        .map(applyFloorAndCeiling(floor, ceiling));
+  });
 
-const applyRule = (rule: PricingRule) => {
-  const ruleScope = getRuleKeyValues(rule);
-  if (!ruleScope) return () => Result.Err(["Invalid Rule"]);
-  const maxAge = prop("maxAgeDays", rule) ?? Infinity;
-  const minSample = prop("minSample", rule) ?? 0;
-  const increment = prop("increment", rule);
-  const floor = prop("floor", rule) ?? 0;
-  const ceiling = prop("ceiling", rule) ?? Infinity;
-  return (list: Listing[]) =>
-    Result.Ok(list)
-      .map(filter(filterByKey(ruleScope)))
-      .map(filter(filterByAge(maxAge)))
-      .validate([
-        validateBySampleSize(minSample),
-        isDataEmpty("No Listings passed maxAgeDays"),
-      ])
-      .innerMap(toPrices)
-      .map(filterInvalidPrices)
-      .map(mean)
-      .map(targetPrice(increment))
-      .map(applyFloorAndCeiling(floor, ceiling));
-};
+  return map(applyRule(currency), rules);
+});
 
-const pricesByData = map(applyRule, rules);
+const pricesByData = applyRules(sampleCriteria);
 
-map((fn) => fn(listings), pricesByData).map((result) =>
+map((fn: any) => fn(sampleSnapshot), pricesByData).map((result) =>
   console.log(result.isErr() ? result.unwrapErr() : result.safeUnwrap()),
 );
