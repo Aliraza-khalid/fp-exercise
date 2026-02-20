@@ -1,0 +1,23 @@
+{
+  "name": "fp-exercise",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/solution.ts",
+  "scripts": {
+    "start": "tsx ./src/solution.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@carbonteq/fp": "^0.10.0",
+    "ramda": "^0.32.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "@types/ramda": "^0.31.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
