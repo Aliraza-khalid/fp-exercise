@@ -36,11 +36,11 @@ import type { Listing, MarketSnapshot } from "./types/market.js";
 // [DONE] ignore non-finite prices
 // [DONE] result cannot be below zero or floor or above ceiling
 
-const applyRules = curry((criteria: Criteria) => {
+const applyCriteria = (criteria: Criteria) => {
   const currency = prop("currency", criteria);
   const rules = prop("rules", criteria);
 
-  const compileRule = curry(
+  const applyRule = curry(
     (currency: string, rule: PricingRule, data: MarketSnapshot) => {
       const maxAge = prop("maxAgeDays", rule);
       const minSample = prop("minSample", rule);
@@ -48,17 +48,15 @@ const applyRules = curry((criteria: Criteria) => {
       const floor = prop("floor", rule);
       const ceiling = prop("ceiling", rule);
 
-      return Result.fromNullable(
-        getRuleKeyValues(rule),
+      return Result.fromNullable(getRuleKeyValues(rule), [
         "Invalid Rule",
-      ).flatMap((scope) =>
+      ]).flatMap((scope) =>
         Result.Ok(data)
           .validate([validateCurrency(currency)])
           .map(prop("listings"))
           .map(filter(filterByKey(scope)))
-          .validate([validateBySampleSize(minSample)])
           .map(filter(filterByAge(maxAge)))
-          .validate([isDataEmpty("No listings passed maxAgeDays")])
+          .validate([validateBySampleSize(minSample)])
           .map(map(toPrices))
           .map(filterInvalidPrices)
           .validate([isDataEmpty("No valid prices")])
@@ -69,11 +67,11 @@ const applyRules = curry((criteria: Criteria) => {
     },
   );
 
-  return map(compileRule(currency), rules);
-});
+  return map(applyRule(currency), rules);
+};
 
-const pricesByData = applyRules(sampleCriteria);
+const pricesByData = applyCriteria(sampleCriteria);
 
 map((fn: any) => fn(sampleSnapshot), pricesByData).map((result) =>
-  console.log(result.isErr() ? result.unwrapErr() : result.safeUnwrap()),
+  console.log(result.isErr() ? result.unwrapErr() : result.unwrap()),
 );
