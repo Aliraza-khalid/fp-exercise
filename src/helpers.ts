@@ -47,7 +47,7 @@ export function filterByKey({
   return (e: Listing) => values.includes(e[key]);
 }
 
-export function filterByAge(maxAge: number) {
+export function filterByAge(maxAge: number = Infinity) {
   return (e: Listing) => e.listing.ageDays <= maxAge;
 }
 
@@ -63,7 +63,7 @@ export function targetPrice(increment: SignedIncrement) {
   return (mean: number) => ({ price: mean + increment }) as PriceResult;
 }
 
-export const applyFloorAndCeiling = (floor: number, ceiling: number) => {
+export const applyFloorAndCeiling = (floor: number = 0, ceiling: number = Infinity) => {
   return (result: PriceResult) => {
     const price = min(max(floor, result.price), ceiling);
     return { price };
@@ -80,12 +80,12 @@ export function validateCurrency(currency: string) {
 }
 
 export const isDataEmpty = (message: string) => {
-  return (data: Listing[]) =>
+  return (data: any[]) =>
     isEmpty(data) ? Result.Err(message) : Result.Ok(true);
 };
 
-export const validateBySampleSize = (minSample: number) => {
-  return (data: Listing[]) =>
+export const validateBySampleSize = (minSample: number = 1) => {
+  return (data: any[]) =>
     data.length < minSample
       ? Result.Err("Listings less than minSample")
       : Result.Ok(true);
